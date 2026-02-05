@@ -222,55 +222,6 @@ def handle_sms():
         # Send monitoring message to business owner
         send_monitoring_sms(sender_number, incoming_message, ai_response)
         
-        if not PERSONAL_PHONE:
-            logger.warning("PERSONAL_PHONE not configured, skipping monitoring SMS")
-            return
-        
-        monitoring_message = f"[MONITOR] Customer ({customer_number}): {customer_message} | Bot: {bot_response}"
-        
-        # Truncate if too long
-        if len(monitoring_message) > 1600:
-            monitoring_message = monitoring_message[:1597] + "..."
-        
-        message = twilio_client.messages.create(
-            body=monitoring_message,
-            from_=os.getenv('TWILIO_PHONE_NUMBER'),
-            to=PERSONAL_PHONE
-        )
-        
-        logger.info(f"Monitoring SMS sent to {PERSONAL_PHONE}: {message.sid}")
-        
-    except Exception as e:
-        logger.error(f"Error sending monitoring SMS: {str(e)}")
-
-@app.route('/sms', methods=['POST'])
-def handle_sms():
-    """
-    Handle incoming SMS from Twilio.
-    Receives the message, processes it with Gemini, and returns TwiML response.
-    """
-    try:
-        # Extract incoming message and sender number from Twilio
-        incoming_message = request.form.get('Body', '').strip()
-        sender_number = request.form.get('From', '').strip()
-        
-        logger.info(f"Received SMS from {sender_number}: {incoming_message}")
-        
-        # Get AI response
-        ai_response = get_ai_response(incoming_message)
-        
-        # Use fallback message if API fails
-        if not ai_response:
-            ai_response = "I'm a bit tied up, but I'll call you shortly!"
-        
-        # Log to CSV
-        log_to_csv(sender_number, incoming_message, ai_response)
-        
-        # Create TwiML response
-        twiml_response = MessagingResponse()
-        twiml_response.message(ai_response)
-        
-        logger.info(f"Sent response to {sender_number}")
         return str(twiml_response), 200
         
     except Exception as e:
