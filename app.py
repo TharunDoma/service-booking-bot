@@ -90,14 +90,20 @@ def get_ai_response(sender_number, incoming_message):
         
         system_instruction = """You are Sarah, a friendly receptionist for a Roofing Company. 
 Your goal is to get the customer's Name, Issue, and Address. 
-Keep replies short (under 160 chars). Be professional and helpful.
-Do not make up prices or guarantees. If asked about pricing, say you'll have someone call them."""
+CRITICAL: Your response MUST be 160 characters or less - this is an SMS limit. Count characters carefully.
+Be professional, helpful, and concise. Never make up prices or guarantees.
+If asked about pricing, say you'll have someone call them."""
         
         model = GenerativeModel('gemini-2.5-flash')
         
-        response = model.generate_content(
-            f"{system_instruction}\n\nConversation:\n{context}\n\nRespond as Sarah:"
-        )
+        prompt = f"""{system_instruction}
+
+Conversation:
+{context}
+
+Respond as Sarah (MAXIMUM 160 characters):"""
+        
+        response = model.generate_content(prompt)
         
         ai_response = response.text.strip()
         
