@@ -52,6 +52,9 @@ def initialize_csv():
             writer.writerow(['Timestamp', 'Sender Number', 'Incoming Message', 'AI Response'])
         logger.info(f"{LEADS_CSV} created with headers")
 
+# Initialize CSV on startup (works for gunicorn too)
+initialize_csv()
+
 def log_to_csv(sender_number, incoming_message, ai_response):
     """Log SMS interaction to CSV file."""
     try:
@@ -115,6 +118,39 @@ Do not make up prices or guarantees. If asked about pricing, say you'll have som
         logger.error(f"Error calling Gemini API: {str(e)}")
         return None
 
+
+def send_monitoring_sms(customer_number, customer_message, bot_response):
+    """
+    Send monitoring message to business owner about the conversation.
+    """
+    try:
+        if not PERSONAL_PHONE:
+            logger.warning("PERSONAL_PHONE not configured, skipping monitoring SMS")
+            return
+
+        twilio_number = os.getenv('TWILIO_PHONE_NUMBER')
+        if not twilio_number:
+            logger.warning("TWILIO_PHONE_NUMBER not configured, skipping monitoring SMS")
+            return
+
+        monitoring_message = f"[MONITOR] Customer ({customer_number}): {customer_message} | Bot: {bot_response}"
+
+        # Truncate if too long
+        if len(monitoring_message) > 1600:
+            monitoring_message = monitoring_message[:1597] + "..."
+
+        message = twilio_client.messages.create(
+            body=monitoring_message,
+            from_=twilio_number,
+            to=PERSONAL_PHONE
+        )
+
+        logger.info(f"Monitoring SMS sent to {PERSONAL_PHONE}: {message.sid}")
+
+    except Exception as e:
+        logger.error(f"Error sending monitoring SMS: {str(e)}")
+
+
 @app.route('/voice', methods=['POST'])
 def handle_voice():
     """
@@ -126,6 +162,10 @@ def handle_voice():
         
         # Create TwiML response
         response = VoiceResponse()
+        
+        if not PERSONAL_PHONE:
+            response.say("Thanks for calling. We'll get back to you shortly.")
+            return str(response), 200
         
         # Forward call to personal phone
         dial = response.dial(
