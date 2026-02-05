@@ -92,7 +92,30 @@ Do not make up prices or guarantees. If asked about pricing, say you'll have som
         
         model = GenerativeModel('gemini-2.5-flash')
         
-        respovoice', methods=['POST'])
+        response = model.generate_content(
+            f"{system_instruction}\n\nConversation:\n{context}\n\nRespond as Sarah:"
+        )
+        
+        ai_response = response.text.strip()
+        
+        # Ensure response is under 160 characters
+        if len(ai_response) > 160:
+            ai_response = ai_response[:157] + "..."
+        
+        # Add AI response to history
+        conversation_history[sender_number].append({
+            "role": "assistant",
+            "content": ai_response
+        })
+        
+        logger.info(f"AI Response: {ai_response}")
+        return ai_response
+        
+    except Exception as e:
+        logger.error(f"Error calling Gemini API: {str(e)}")
+        return None
+
+@app.route('/voice', methods=['POST'])
 def handle_voice():
     """
     Handle incoming voice calls - forward to personal phone.
